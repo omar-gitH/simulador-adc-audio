@@ -131,18 +131,32 @@ class TPIntegradorApp:
         self.audio_bits = tk.StringVar(value="8")
         ttk.Combobox(left, textvariable=self.audio_bits, values=["8", "16"], state="readonly", width=14).grid(row=3, column=1, padx=14, pady=6)
 
+        # --- BLOQUE DE BOTONES ORDENADO ---
+        
+        # Fila 4: Botón de grabación
         self.audio_record_btn = ctk.CTkButton(left, text="Grabar Audio", command=self.grabar_audio, fg_color="#ef4444", hover_color="#dc2626", text_color="#ffffff", corner_radius=8, height=34)
         self.audio_record_btn.grid(row=4, column=0, columnspan=2, sticky="ew", padx=14, pady=(14, 4))
         
+        # Fila 5 y 6: Comparaciones simples (1 a 1)
         ctk.CTkButton(left, text="📉 Comparar Ondas (Tiempo)", command=self.mostrar_onda_original, fg_color="#10b981", hover_color="#059669", text_color="#ffffff", corner_radius=8, height=34).grid(row=5, column=0, columnspan=2, sticky="ew", padx=14, pady=4)
+        
         ctk.CTkButton(left, text="📊 Comparar Espectros (Freq)", command=self.mostrar_espectro, fg_color="#2563eb", hover_color="#1d4ed8", text_color="#ffffff", corner_radius=8, height=34).grid(row=6, column=0, columnspan=2, sticky="ew", padx=14, pady=4)
-        ctk.CTkButton(left, text="Ver Archivo WAV", command=self.ver_wav, fg_color="#e2e8f0", hover_color="#cbd5e1", text_color="#334155", corner_radius=8, height=34).grid(row=7, column=0, columnspan=2, sticky="ew", padx=14, pady=4)
+        
+        # Fila 7 y 8: Comparaciones múltiples (Nuevas funciones)
+        ctk.CTkButton(left, text="🌈 Múltiples Espectros (Freq)", command=self.mostrar_multiples_espectros, fg_color="#8b5cf6", hover_color="#7c3aed", text_color="#ffffff", corner_radius=8, height=34).grid(row=7, column=0, columnspan=2, sticky="ew", padx=14, pady=4)
+        
+        ctk.CTkButton(left, text="📈 Múltiples Ondas (Tiempo)", command=self.mostrar_multiples_ondas, fg_color="#f59e0b", hover_color="#d97706", text_color="#ffffff", corner_radius=8, height=34).grid(row=8, column=0, columnspan=2, sticky="ew", padx=14, pady=4)
 
+        # Fila 9: Ver archivo
+        ctk.CTkButton(left, text="Ver Archivo WAV", command=self.ver_wav, fg_color="#e2e8f0", hover_color="#cbd5e1", text_color="#334155", corner_radius=8, height=34).grid(row=9, column=0, columnspan=2, sticky="ew", padx=14, pady=4)
+
+        # Fila 10: Estado
         self.audio_status = tk.StringVar(value="Listo para grabar audio.")
-        tk.Label(left, textvariable=self.audio_status, wraplength=240, bg="#ffffff", fg="#2563eb", font=("Segoe UI", 9, "italic")).grid(row=8, column=0, columnspan=2, sticky="w", padx=14, pady=6)
+        tk.Label(left, textvariable=self.audio_status, wraplength=240, bg="#ffffff", fg="#2563eb", font=("Segoe UI", 9, "italic")).grid(row=10, column=0, columnspan=2, sticky="w", padx=14, pady=6)
 
+        # Fila 11: Consola/Log
         self.audio_log = tk.Text(left, height=12, width=38, bg="#f8fafc", fg="#334155", relief="flat", highlightthickness=1, highlightbackground="#e2e8f0", font=("Consolas", 9))
-        self.audio_log.grid(row=9, column=0, columnspan=2, padx=14, pady=14, sticky="nsew")
+        self.audio_log.grid(row=11, column=0, columnspan=2, padx=14, pady=14, sticky="nsew")
         self.audio_log.insert("end", "Registro del proceso de exportación y remuestreo...\n")
 
         # Panel Derecho: Gráfica de Audio / Espectro
@@ -192,9 +206,20 @@ class TPIntegradorApp:
     def aplicar_zoom_audio(self, value):
         valor = float(value)
         self.audio_zoom = valor
+        # Asegurarse de tener límites base válidos (recalcular si no existen)
         if self.audio_base_xlim is None:
+            try:
+                self.audio_ax.relim()
+                self.audio_ax.autoscale_view()
+            except Exception:
+                pass
             self.audio_base_xlim = self.audio_ax.get_xlim()
         if self.audio_base_ylim is None:
+            try:
+                self.audio_ax.relim()
+                self.audio_ax.autoscale_view()
+            except Exception:
+                pass
             self.audio_base_ylim = self.audio_ax.get_ylim()
 
         if getattr(self, 'audio_proportional_var', None) and self.audio_proportional_var.get():
@@ -236,22 +261,9 @@ class TPIntegradorApp:
         self.audio_log.insert("end", text + "\n")
         self.audio_log.see("end")
 
-    def grabar_audio(self):
-        try:
-            duracion = float(self.duration.get())
-            if duracion <= 0:
-                raise ValueError("La duración debe ser mayor que cero.")
 
-            self.recording = True
-            self.audio_status.set("🎤 Grabando… hable ahora.")
-            self._append_audio_log(f"Captura Máxima Fidelidad: {duracion:.1f} s a {self.fs_nativa} Hz (16 bits)")
-            self._animar_grabacion()
-            
-            # Se graba de forma nativa a máxima calidad fija (44.1kHz, 16 bits)
-            thread = threading.Thread(target=self._grabar_audio_thread, args=(duracion, self.fs_nativa), daemon=True)
-            thread.start()
-        except Exception as exc:
-            messagebox.showerror("Error de grabación", f"Datos inválidos: {exc}")
+    
+
 
     def _animar_grabacion(self, frame=0):
         if self.recording:
@@ -287,22 +299,73 @@ class TPIntegradorApp:
         self.audio_status.set("No fue posible grabar.")
         self._append_audio_log("Error: " + mensaje)
 
+
+    def grabar_audio(self):
+        try:
+            duracion = float(self.duration.get())
+            if duracion <= 0:
+                raise ValueError("La duración debe ser mayor que cero.")
+
+            # Capturamos los valores seleccionados en la interfaz
+            freq_elegida = self.audio_fs.get()
+            bits_elegidos = self.audio_bits.get()
+
+            self.recording = True
+            self.audio_status.set("🎤 Grabando… hable ahora.")
+            
+            # Creamos el mensaje dinámico
+            mensaje = f"Grabando {duracion:.1f}s | Maestra: {self.fs_nativa}Hz -> Destino: {freq_elegida}Hz, {bits_elegidos} bits"
+            
+            # Mostramos en log y terminal
+            self._append_audio_log(mensaje)
+            print(f"[I/O HANDLER] {mensaje}")
+            
+            self._animar_grabacion()
+            
+            # Se graba de forma nativa a máxima calidad fija
+            thread = threading.Thread(target=self._grabar_audio_thread, args=(duracion, self.fs_nativa), daemon=True)
+            thread.start()
+            
+        except Exception as exc:
+            messagebox.showerror("Error de grabación", f"Datos inválidos: {exc}")
+
     def procesar_audio_seleccionado(self):
-        """Aplica las reducciones de resolución configuradas basándose en el audio en memoria"""
+        """
+        [CAPA LÓGICA] Aplica las reducciones de resolución configuradas.
+        
+        Procesa el audio grabado aplicando:
+        1. Remuestreo digital (diezmado a fs_destino)
+        2. Cuantización digital (reducción a bits_destino)
+        3. Guardado en WAV
+        
+        Retorna:
+            tuple: (audio_convertido, fs_destino, bits_destino)
+        """
         if self.audio_alta_fidelidad is None:
             return None, None, None
             
         fs_destino = int(self.audio_fs.get())
         bits_destino = int(self.audio_bits.get())
         
-        # 1. Remuestreo Digital
-        audio_remuestreado = audio_module.remuestrear_audio(self.audio_alta_fidelidad, self.fs_nativa, fs_destino)
+        # 1. Remuestreo Digital (Core Engine)
+        audio_remuestreado = audio_module.remuestrear_audio(
+            self.audio_alta_fidelidad, self.fs_nativa, fs_destino
+        )
         
-        # 2. Cuantización Digital
+        # 2. Cuantización Digital (Core Engine)
         audio_convertido = audio_module.cuantizar_audio(audio_remuestreado, bits_destino)
         
-        # Guardar en disco el resultado simulado
+        # 3. Persistencia física (I/O Handler)
         write(str(OUTPUT_WAV), fs_destino, audio_convertido)
+        
+        # Log de Nyquist
+        info_nyquist = audio_module.detectar_aliasing_potencial(
+            self.fs_nativa, fs_destino
+        )
+        self._append_audio_log(
+            f"Nyquist: {info_nyquist['nyquist_destino']:.0f}Hz "
+            f"(factor: {info_nyquist['relacion']:.3f})"
+        )
         
         return audio_convertido, fs_destino, bits_destino
 
@@ -310,35 +373,55 @@ class TPIntegradorApp:
         if self.audio_alta_fidelidad is None:
             messagebox.showinfo("Sin audio", "Primero grabe una muestra de audio.")
             return
-
+        self.audio_base_xlim = None
+        self.audio_base_ylim = None
         audio_conv, fs_conv, bits_conv = self.procesar_audio_seleccionado()
         self._append_audio_log(f"Procesando Tiempo -> Destino: {fs_conv}Hz, {bits_conv} bits.")
 
+        # Limpiar eje y volver a dibujar los datos recalculando escalas
         self.audio_ax.clear()
-        
+
         # Vectores de tiempo independientes
-        t_orig = np.arange(len(self.audio_alta_fidelidad)) / self.fs_nativa
-        t_conv = np.arange(len(audio_conv)) / fs_conv
-        
+        t_orig = np.arange(len(self.audio_alta_fidelidad), dtype=float) / float(self.fs_nativa)
+        t_conv = np.arange(len(audio_conv), dtype=float) / float(fs_conv)
+        """
         # Ventana de tiempo (Zoom dinámico de 50ms para apreciar los escalones)
         max_tiempo = 0.05
-        muestras_orig = int(max_tiempo * self.fs_nativa)
-        muestras_conv = int(max_tiempo * fs_conv)
+        muestras_orig = max(1, int(max_tiempo * self.fs_nativa))
+        muestras_conv = max(1, int(max_tiempo * fs_conv))
 
-        # Gráfica original en azul suave
-        self.audio_ax.plot(t_orig[:muestras_orig], self.audio_alta_fidelidad[:muestras_orig], 
-                           label="Original (44.1 kHz, 16 bits)", color="#2563eb", alpha=0.5, linewidth=1.5)
-        
+        # Gráfica original en azul suave (usar float para evitar artefactos por enteros)
+        self.audio_ax.plot(t_orig[:muestras_orig], self.audio_alta_fidelidad[:muestras_orig].astype(float),
+                   label="Original (44.1 kHz, 16 bits)", color="#2563eb", alpha=0.5, linewidth=1.5)
+
         # Gráfica digitalizada escalonada (Simulación ADC) en rojo
-        self.audio_ax.step(t_conv[:muestras_conv], audio_conv[:muestras_conv], where="mid",
-                           label=f"Convertido ({fs_conv} Hz, {bits_conv} bits)", color="#ef4444", linewidth=1.5)
-        
+        self.audio_ax.step(t_conv[:muestras_conv], audio_conv[:muestras_conv].astype(float), where="mid",
+                   label=f"Convertido ({fs_conv} Hz, {bits_conv} bits)", color="#ef4444", linewidth=1.5)
+        """
+        # --- CÓDIGO CORREGIDO ---
+        # Gráfica digitalizada escalonada en rojo (Se dibuja primero, en el fondo, y semi-transparente)
+        # Gráfica digitalizada escalonada en rojo (Dibuja la convertida primero, semi-transparente)
+        self.audio_ax.step(t_conv, audio_conv.astype(float), where="mid",
+                           label=f"Convertido ({fs_conv} Hz, {bits_conv} bits)", 
+                           color="#640D0D", linewidth=1.5, alpha=0.6, zorder=2)
+
+        # Gráfica original en azul suave (Dibuja la original al frente con zorder=3, pero MUY traslúcida)
+        self.audio_ax.plot(t_orig, self.audio_alta_fidelidad.astype(float),
+                           label="Original (44.1 kHz, 16 bits)", 
+                           color="#504E73", linewidth=1.5, alpha=0.5, zorder=3)
         self.audio_ax.set_title("Comparación en el Tiempo (Zoom 50ms)", color="#0f172a")
         self.audio_ax.set_xlabel("Tiempo (s)")
         self.audio_ax.set_ylabel("Amplitud Int16")
         self.audio_ax.legend(facecolor='#ffffff', edgecolor='#e2e8f0')
         self.audio_ax.grid(True, alpha=0.2, color="#94a3b8")
         
+        # Recalcular límites según los datos actuales para evitar que queden obsoletos
+        try:
+            self.audio_ax.relim()
+            self.audio_ax.autoscale_view()
+        except Exception:
+            pass
+
         self.audio_base_xlim = tuple(self.audio_ax.get_xlim())
         self.audio_base_ylim = tuple(self.audio_ax.get_ylim())
         self.audio_zoom_var.set(1.0)
@@ -348,31 +431,34 @@ class TPIntegradorApp:
         if self.audio_alta_fidelidad is None:
             messagebox.showinfo("Sin audio", "Primero grabe una muestra de audio.")
             return
+        self.audio_base_xlim = None
+        self.audio_base_ylim = None
 
         audio_conv, fs_conv, bits_conv = self.procesar_audio_seleccionado()
         self._append_audio_log(f"Procesando Espectro -> Nyquist Destino: {fs_conv/2} Hz.")
         
+        # Limpiar eje y dibujar espectros, luego recalcular escalas
         self.audio_ax.clear()
-        
+
         # FFT de la señal original
-        fft_orig = np.fft.fft(self.audio_alta_fidelidad)
-        freqs_orig = np.fft.fftfreq(len(fft_orig), 1 / self.fs_nativa)
+        fft_orig = np.fft.fft(self.audio_alta_fidelidad.astype(float))
+        freqs_orig = np.fft.fftfreq(len(fft_orig), 1.0 / float(self.fs_nativa))
         mitad_orig = len(freqs_orig) // 2
         magnitude_orig = np.abs(fft_orig)[:mitad_orig]
-        
+
         # FFT de la señal remuestreada y cuantizada
-        fft_conv = np.fft.fft(audio_conv)
-        freqs_conv = np.fft.fftfreq(len(fft_conv), 1 / fs_conv)
+        fft_conv = np.fft.fft(audio_conv.astype(float))
+        freqs_conv = np.fft.fftfreq(len(fft_conv), 1.0 / float(fs_conv))
         mitad_conv = len(freqs_conv) // 2
         magnitude_conv = np.abs(fft_conv)[:mitad_conv]
 
         # Espectro original relleno de azul traslúcido
         self.audio_ax.fill_between(freqs_orig[:mitad_orig], magnitude_orig, color="#3b82f6", alpha=0.3, label="Espectro Fiel (44.1kHz)")
         self.audio_ax.plot(freqs_orig[:mitad_orig], magnitude_orig, color="#1d4ed8", linewidth=1)
-        
+
         # Espectro Convertido superpuesto en contorno rojo (muestra el Aliasing si se pasa de Nyquist)
         self.audio_ax.plot(freqs_conv[:mitad_conv], magnitude_conv, color="#ef4444", alpha=0.8, linewidth=1.5,
-                           label=f"Espectro Convertido ({fs_conv} Hz)")
+                   label=f"Espectro Convertido ({fs_conv} Hz)")
         
         self.audio_ax.set_title("Comparación de Espectros de Frecuencia (Aliasing)", color="#0f172a")
         self.audio_ax.set_xlabel("Frecuencia (Hz)")
@@ -380,6 +466,12 @@ class TPIntegradorApp:
         self.audio_ax.legend(facecolor='#ffffff', edgecolor='#e2e8f0')
         self.audio_ax.grid(True, alpha=0.2, color="#94a3b8")
         
+        try:
+            self.audio_ax.relim()
+            self.audio_ax.autoscale_view()
+        except Exception:
+            pass
+
         self.audio_base_xlim = tuple(self.audio_ax.get_xlim())
         self.audio_base_ylim = tuple(self.audio_ax.get_ylim())
         self.audio_zoom_var.set(1.0)
@@ -390,9 +482,131 @@ class TPIntegradorApp:
             messagebox.showinfo("Archivo WAV Convertido", f"Ubicación:\n{OUTPUT_WAV.resolve()}")
         else:
             messagebox.showinfo("Sin archivo", "Aún no has procesado ninguna conversión.")
+    
+    def mostrar_multiples_espectros(self):
+        if self.audio_alta_fidelidad is None:
+            messagebox.showinfo("Sin audio", "Primero grabe una muestra de audio.")
+            return
+
+        self.audio_base_xlim = None
+        self.audio_base_ylim = None
+        self.audio_ax.clear()
+
+        # 1. Graficar el espectro ORIGINAL como fondo sólido gris/azulado
+        fft_orig = np.fft.fft(self.audio_alta_fidelidad.astype(float))
+        freqs_orig = np.fft.fftfreq(len(fft_orig), 1.0 / float(self.fs_nativa))
+        mitad_orig = len(freqs_orig) // 2
+        magnitude_orig = np.abs(fft_orig)[:mitad_orig]
+        
+        self.audio_ax.fill_between(freqs_orig[:mitad_orig], magnitude_orig, color="#e2e8f0", alpha=0.7, label=f"Original ({self.fs_nativa} Hz)")
+
+        # 2. Definir las frecuencias a comparar y sus colores
+        tasas_destino = [22050, 16000, 8000]
+        colores = ["#3b82f6", "#10b981", "#ef4444"] # Azul, Verde, Rojo
+
+        # 3. Iterar, remuestrear y graficar cada una
+        bits_destino = int(self.audio_bits.get()) # Mantenemos los bits seleccionados en la UI
+
+        for fs_dest, color in zip(tasas_destino, colores):
+            # Remuestrear usando tu módulo
+            audio_rem = audio_module.remuestrear_audio(self.audio_alta_fidelidad, self.fs_nativa, fs_dest)
+            audio_conv = audio_module.cuantizar_audio(audio_rem, bits_destino)
+
+            # Calcular FFT
+            fft_conv = np.fft.fft(audio_conv.astype(float))
+            freqs_conv = np.fft.fftfreq(len(fft_conv), 1.0 / float(fs_dest))
+            mitad_conv = len(freqs_conv) // 2
+            magnitude_conv = np.abs(fft_conv)[:mitad_conv]
+
+            # Graficar solo el contorno para que se vean las demás
+            self.audio_ax.plot(freqs_conv[:mitad_conv], magnitude_conv, color=color, alpha=0.9, linewidth=1.5, label=f"Destino ({fs_dest} Hz)")
+
+        # 4. Configuración visual de la gráfica
+        self.audio_ax.set_title("Comparación Simultánea de Frecuencias de Muestreo", color="#0f172a")
+        self.audio_ax.set_xlabel("Frecuencia (Hz)")
+        self.audio_ax.set_ylabel("Magnitud / Densidad")
+        self.audio_ax.legend(facecolor='#ffffff', edgecolor='#e2e8f0', loc='upper right')
+        self.audio_ax.grid(True, alpha=0.2, color="#94a3b8")
+
+        # Ajuste dinámico de la vista
+        try:
+            self.audio_ax.relim()
+            self.audio_ax.autoscale_view()
+            # Opcional: limitar el eje X hasta los 22kHz para no ver el espacio vacío
+            self.audio_ax.set_xlim(0, self.fs_nativa / 2) 
+        except Exception:
+            pass
+
+        self.audio_base_xlim = tuple(self.audio_ax.get_xlim())
+        self.audio_base_ylim = tuple(self.audio_ax.get_ylim())
+        self.audio_zoom_var.set(1.0)
+        self.audio_canvas.draw()
+        
+        self._append_audio_log("Análisis múltiple de frecuencias completado.")
+
+    def mostrar_multiples_ondas(self):
+        if self.audio_alta_fidelidad is None:
+            messagebox.showinfo("Sin audio", "Primero grabe una muestra de audio.")
+            return
+
+        self.audio_base_xlim = None
+        self.audio_base_ylim = None
+        self.audio_ax.clear()
+
+        # 1. Vectores de tiempo y datos para la señal original
+        t_orig = np.arange(len(self.audio_alta_fidelidad), dtype=float) / float(self.fs_nativa)
+        self.audio_ax.plot(t_orig, self.audio_alta_fidelidad.astype(float),
+                           label=f"Original ({self.fs_nativa} Hz)", color="#64748b", alpha=0.4, linewidth=2)
+
+        # 2. Configurar las frecuencias a comparar, colores y estilos
+        tasas_destino = [22050, 16000, 8000]
+        colores = ["#3b82f6", "#10b981", "#ef4444"] # Azul, Verde, Rojo
+        bits_destino = int(self.audio_bits.get())
+
+        for fs_dest, color in zip(tasas_destino, colores):
+            # Remuestrear y cuantizar usando tu módulo de audio
+            audio_rem = audio_module.remuestrear_audio(self.audio_alta_fidelidad, self.fs_nativa, fs_dest)
+            audio_conv = audio_module.cuantizar_audio(audio_rem, bits_destino)
+            
+            # Crear su propio vector de tiempo basado en su frecuencia
+            t_conv = np.arange(len(audio_conv), dtype=float) / float(fs_dest)
+            
+            # Graficar con .step para simular el retenedor de orden cero (conversión digital)
+            self.audio_ax.step(t_conv, audio_conv.astype(float), where="mid",
+                               label=f"{fs_dest} Hz ({bits_destino} bits)", color=color, linewidth=1.5, alpha=0.85)
+
+        # 3. AUTO-ZOOM AL PICO MÁS ALTO (Crucial para ver los escalones planos)
+        indice_pico = np.argmax(np.abs(self.audio_alta_fidelidad))
+        tiempo_pico = indice_pico / float(self.fs_nativa)
+        
+        # Ventana de 8 milisegundos (4ms a la izquierda, 4ms a la derecha)
+        margen = 0.004 
+        self.audio_ax.set_xlim(max(0, tiempo_pico - margen), tiempo_pico + margen)
+
+        # 4. Ajustes estéticos de la gráfica
+        self.audio_ax.set_title("Degradación de la Onda según Frecuencia de Muestreo (Zoom 8ms)", color="#0f172a")
+        self.audio_ax.set_xlabel("Tiempo (s)")
+        self.audio_ax.set_ylabel("Amplitud Int16")
+        self.audio_ax.legend(facecolor='#ffffff', edgecolor='#e2e8f0', loc='upper right')
+        self.audio_ax.grid(True, alpha=0.2, color="#94a3b8")
+
+        try:
+            self.audio_ax.relim()
+            self.audio_ax.autoscale_view()
+        except Exception:
+            pass
+
+        self.audio_base_xlim = tuple(self.audio_ax.get_xlim())
+        self.audio_base_ylim = tuple(self.audio_ax.get_ylim())
+        self.audio_zoom_var.set(1.0)
+        self.audio_canvas.draw()
+        
+        self._append_audio_log("Análisis comparativo de formas de onda completado.")
+
 
 
 if __name__ == "__main__":
     root = ctk.CTk()
     TPIntegradorApp(root)
     root.mainloop()
+
